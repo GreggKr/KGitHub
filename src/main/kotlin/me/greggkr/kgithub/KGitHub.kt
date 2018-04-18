@@ -2,9 +2,9 @@ package me.greggkr.kgithub
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
-import com.google.gson.JsonObject
 import me.greggkr.kgithub.auth.GitHubAuthenticator
 import me.greggkr.kgithub.wrappers.Repository
+import me.greggkr.kgithub.wrappers.User
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.*
@@ -53,6 +53,23 @@ class KGitHub {
                     .collect(Collectors.toList())[0]
         }
 
+        fun getUser(user: String): User? {
+            val req = Request.Builder()
+                    .url("$BASE_USER_URL/$user")
+                    .get()
+                    .build()
+
+            val res = client.newCall(req).execute()
+
+            val body = res.body() ?: return null
+
+            val str = body.string()
+
+            if (!validate(str)) return null
+
+            return gson.fromJson(str, User::class.java)
+        }
+
         /**
          * Checks the GitHub response to make sure it's valid
          *
@@ -62,10 +79,15 @@ class KGitHub {
         private fun validate(json: String): Boolean {
             val elem = gson.fromJson(json, JsonElement::class.java)
 
-            if (elem.isJsonArray) return true // If it's an array, it's always valid
+            if (elem.isJsonArray) return true// If it's an array, it's always valid
 
             val obj = elem.asJsonObject
-            return obj.has("message") && obj.get("message").asString == "Not found"
+
+            if (obj.has("message")) {
+                if (obj.get("message").asString != "Not found") return false
+            }
+
+            return true
         }
     }
 }
