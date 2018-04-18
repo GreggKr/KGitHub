@@ -2,7 +2,7 @@ package me.greggkr.kgithub.wrappers
 
 import com.google.gson.annotations.SerializedName
 
-data class User(
+data class Owner(
         @SerializedName("login") val username: String,
         val id: Int,
         @SerializedName("avatar_url") val avatarUrl: String,

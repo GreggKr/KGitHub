@@ -7,7 +7,7 @@ data class Repository(
         val id: Long,
         val name: String,
         @SerializedName("full_name") val fullName: String,
-        val owner: User,
+        val owner: Owner,
         val private: Boolean,
         @SerializedName("html_url") val url: String,
         val description: String,
