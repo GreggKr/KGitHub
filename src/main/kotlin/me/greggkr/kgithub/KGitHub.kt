@@ -7,6 +7,8 @@ import me.greggkr.kgithub.auth.GitHubAuthenticator
 import me.greggkr.kgithub.wrappers.Repository
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.util.*
+import java.util.stream.Collectors
 
 private const val BASE_URL = "https://api.github.com"
 private const val BASE_USER_URL = "$BASE_URL/users"
@@ -40,6 +42,15 @@ class KGitHub {
             if (!validate(str)) return null
 
             return gson.fromJson(str, Array<Repository>::class.java)
+        }
+
+        fun getRepository(user: String, repo: String): Repository? {
+            val repos = getRepositories(user)
+
+            return Arrays.stream(repos)
+                    .filter { it.name.equals(repo, true) }
+                    .limit(1)
+                    .collect(Collectors.toList())[0]
         }
 
         /**
