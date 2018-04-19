@@ -3,6 +3,8 @@ package me.greggkr.kgithub
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
 import me.greggkr.kgithub.auth.GitHubAuthenticator
+import me.greggkr.kgithub.response.Response
+import me.greggkr.kgithub.response.ResponseType
 import me.greggkr.kgithub.wrappers.Repository
 import me.greggkr.kgithub.wrappers.User
 import okhttp3.OkHttpClient
@@ -27,7 +29,7 @@ class KGitHub {
          * @param user the user to check repositories for
          * @return null if user does not exist, an Array of Repositories by the user
          */
-        fun getRepositories(user: String): Array<Repository>? {
+        fun getRepositories(user: String): Response<Array<Repository>?> {
             val req = Request.Builder()
                     .url("$BASE_USER_URL/$user/repos")
                     .get()
@@ -35,25 +37,31 @@ class KGitHub {
 
             val res = client.newCall(req).execute()
 
-            val body = res.body() ?: return null
+            val body = res.body() ?: return Response(ResponseType.NOT_FOUND, null)
 
             val str = body.string()
 
-            if (!validate(str)) return null
+            val valRes = validate(str)
 
-            return gson.fromJson(str, Array<Repository>::class.java)
+            if (valRes != ResponseType.OK) return Response(valRes, null)
+
+            val repos = gson.fromJson(str, Array<Repository>::class.java)
+
+            return Response(ResponseType.OK, repos)
         }
 
-        fun getRepository(user: String, repo: String): Repository? {
+        fun getRepository(user: String, repo: String): Response<Repository?> {
             val repos = getRepositories(user)
 
-            return Arrays.stream(repos)
+            val r = Arrays.stream(repos.data)
                     .filter { it.name.equals(repo, true) }
                     .limit(1)
-                    .collect(Collectors.toList())[0]
+                    .collect(Collectors.toList())[0] ?: return Response(ResponseType.NOT_FOUND, null)
+
+            return Response(ResponseType.OK, r)
         }
 
-        fun getUser(user: String): User? {
+        fun getUser(user: String): Response<User?> {
             val req = Request.Builder()
                     .url("$BASE_USER_URL/$user")
                     .get()
@@ -61,13 +69,17 @@ class KGitHub {
 
             val res = client.newCall(req).execute()
 
-            val body = res.body() ?: return null
+            val body = res.body() ?: return Response(ResponseType.OK, null)
 
             val str = body.string()
 
-            if (!validate(str)) return null
+            val valRes = validate(str)
 
-            return gson.fromJson(str, User::class.java)
+            if (valRes != ResponseType.OK) return Response(valRes, null)
+
+            val u = gson.fromJson(str, User::class.java)
+
+            return Response(ResponseType.OK, u)
         }
 
         /**
@@ -76,18 +88,18 @@ class KGitHub {
          * @param json the json to check
          * @return true if valid response, false otherwise
          */
-        private fun validate(json: String): Boolean {
+        private fun validate(json: String): ResponseType {
             val elem = gson.fromJson(json, JsonElement::class.java)
 
-            if (elem.isJsonArray) return true// If it's an array, it's always valid
+            if (elem.isJsonArray) return ResponseType.OK // If it's an array, it's always valid
 
             val obj = elem.asJsonObject
 
             if (obj.has("message")) {
-                if (obj.get("message").asString != "Not found") return false
+                if (obj.get("message").asString != "Not found") return ResponseType.NOT_FOUND
             }
 
-            return true
+            return ResponseType.OK
         }
     }
 }

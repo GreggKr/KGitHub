@@ -3,10 +3,10 @@ import me.greggkr.kgithub.KGitHub
 fun main(args: Array<String>) {
     val repo = KGitHub.getRepository("GreggKr", "KGitHub")
 
-    if (repo == null) {
-        println("repo == null")
+    if (repo.data == null) {
+        println("invalid return. reason: ${repo.type.name}")
         return
     }
 
-    println("${repo.createdAt} : ${repo.defaultBranch} : ${repo.language}")
+    println(repo.data)
 }
