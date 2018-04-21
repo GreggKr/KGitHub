@@ -30,7 +30,6 @@ class KGitHub {
          * @return null if user does not exist, an Array of Repositories by the user
          */
         fun getRepositories(user: String): Response<Array<Repository>?> {
-
             val req = Request.Builder()
                     .url("$BASE_USER_URL/$user/repos?per_page=${getRepoCount(user) ?: 20}")
                     .get()
