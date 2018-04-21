@@ -3,22 +3,31 @@ package me.greggkr.kgithub
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
 import me.greggkr.kgithub.auth.GitHubAuthenticator
+import me.greggkr.kgithub.auth.GitHubInterceptor
+import me.greggkr.kgithub.exceptions.GitHubException
 import me.greggkr.kgithub.response.Response
 import me.greggkr.kgithub.response.ResponseType
+import me.greggkr.kgithub.wrappers.Gist
 import me.greggkr.kgithub.wrappers.Repository
 import me.greggkr.kgithub.wrappers.User
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
+import org.json.JSONObject
 import java.util.*
 import java.util.stream.Collectors
 
 private const val BASE_URL = "https://api.github.com"
 private const val BASE_USER_URL = "$BASE_URL/users"
+private const val BASE_GIST_URL = "$BASE_URL/gists"
 
-class KGitHub {
+/**
+ * All methods in the companion object do not require authentication.
+ */
+class KGitHub(oauthToken: String?) {
     companion object {
         private val client = OkHttpClient.Builder()
-                .authenticator(GitHubAuthenticator())
+                .addInterceptor(GitHubInterceptor())
                 .build()
 
         private val gson = GsonBuilder()
@@ -69,7 +78,7 @@ class KGitHub {
 
             val res = client.newCall(req).execute()
 
-            val body = res.body() ?: return Response(ResponseType.OK, null)
+            val body = res.body() ?: return Response(ResponseType.NOT_FOUND, null)
 
             val str = body.string()
 
@@ -109,5 +118,69 @@ class KGitHub {
 
             return ResponseType.OK
         }
+    }
+
+    class File(val name: String, private val content: String) {
+        fun toJsonObject(): JSONObject {
+            return JSONObject()
+                    .put("content", content)
+        }
+    }
+
+    init {
+        if (oauthToken.isNullOrEmpty()) throw GitHubException("oauthToken cannot be blank.")
+    }
+
+    private val client = OkHttpClient.Builder()
+            .addInterceptor(GitHubInterceptor())
+            .authenticator(GitHubAuthenticator(oauthToken!!))
+            .build()
+
+    fun createGist(files: List<File>, description: String = "", public: Boolean = false): Response<Gist?> {
+        val filesObject = JSONObject()
+
+        for (file in files) {
+            filesObject.put(file.name, file.toJsonObject())
+        }
+
+        val req = Request.Builder()
+                .url(BASE_GIST_URL)
+                .post(RequestBody.create(null, JSONObject()
+                        .put("description", description)
+                        .put("public", public)
+                        .put("files", filesObject)
+                        .toString()))
+                .build()
+
+        val res = client.newCall(req).execute()
+
+        val body = res.body() ?: return Response(ResponseType.NOT_FOUND, null)
+
+        val str = body.string()
+
+        val valRes = validate(str)
+
+        if (valRes != ResponseType.OK) return Response(valRes, null)
+
+        val gist = gson.fromJson(str, Gist::class.java)
+
+        return Response(ResponseType.OK, gist)
+    }
+
+    private fun validate(json: String): ResponseType {
+        val elem = gson.fromJson(json, JsonElement::class.java)
+
+        if (elem.isJsonArray) return ResponseType.OK
+
+        val obj = elem.asJsonObject
+
+        if (obj.has("message")) {
+            val msg = obj.get("message").asString
+
+            if (msg == "Requires Authentication") return ResponseType.BAD_AUTHENTICATION
+            if (msg == "Not foundd") return ResponseType.NOT_FOUND
+        }
+
+        return ResponseType.OK
     }
 }

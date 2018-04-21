@@ -5,12 +5,15 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
 
-class GitHubAuthenticator : Authenticator {
+/**
+ * Includes authentication
+ */
+class GitHubAuthenticator(private val oauthToken: String) : Authenticator {
     override fun authenticate(route: Route, response: Response): Request {
         return response
                 .request()
                 .newBuilder()
-                .addHeader("Accept", "application/vnd.github.v3+json")
+                .addHeader("Authorization", "token $oauthToken")
                 .build()
     }
 }
