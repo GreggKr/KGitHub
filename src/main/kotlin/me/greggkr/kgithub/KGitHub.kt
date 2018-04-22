@@ -91,6 +91,27 @@ class KGitHub(oauthToken: String?) {
             return Response(ResponseType.OK, u)
         }
 
+        fun getGists(user: String): Response<Array<Gist>?> {
+            val req = Request.Builder()
+                    .url("$BASE_USER_URL/$user/gists")
+                    .get()
+                    .build()
+
+            val res = client.newCall(req).execute()
+
+            val body = res.body() ?: return Response(ResponseType.NOT_FOUND, null)
+
+            val str = body.string()
+
+            val valRes = validate(str)
+
+            if (valRes != ResponseType.OK) return Response(valRes, null)
+
+            val gists = gson.fromJson(str, Array<Gist>::class.java)
+
+            return Response(ResponseType.OK, gists)
+        }
+
         private fun getRepoCount(user: String): Int? {
             val response = getUser(user)
 
