@@ -199,7 +199,7 @@ class KGitHub(oauthToken: String?) {
             val msg = obj.get("message").asString
 
             if (msg == "Requires Authentication") return ResponseType.BAD_AUTHENTICATION
-            if (msg == "Not foundd") return ResponseType.NOT_FOUND
+            if (msg == "Not found") return ResponseType.NOT_FOUND
         }
 
         return ResponseType.OK
